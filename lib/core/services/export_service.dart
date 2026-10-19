@@ -6,9 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/haircut.dart';
-import '../models/daily_expense.dart';
 import '../models/owner_payment.dart';
-import '../models/worker_withdrawal.dart';
 
 // Helper to load image assets for PDF (e.g., app logo)
 Future<pw.ImageProvider> _loadPdfLogo() async {
@@ -269,52 +267,92 @@ class ExportService {
     );
   }
 
-  Future<void> exportWorkerAccountReport(String dateInfo, double totalShare, double withdrawals, double balance, ExportFormat format) async {
-    final title = 'تقرير حساب العامل';
+  Future<void> exportWorkerAccountReport({
+    required String dateInfo,
+    required double openingBalance,
+    required double totalDeposits,
+    required double totalWithdrawals,
+    required double currentBalance,
+    required ExportFormat format,
+  }) async {
+    final title = 'تقرير حسابي (الدفتر اليدوي)';
     if (format == ExportFormat.txt) {
-      String txt = "--- $title ---\nتاريخ: $dateInfo\n\nإجمالي الحصة: $totalShare\nإجمالي السحوبات: $withdrawals\nالرصيد الحالي: $balance\n";
+      String txt = "--- $title ---\nتاريخ: $dateInfo\n\n"
+          "الرصيد الافتتاحي: $openingBalance\n"
+          "إجمالي الإيداعات: $totalDeposits\n"
+          "إجمالي السحوبات: $totalWithdrawals\n"
+          "الرصيد الحالي: $currentBalance\n";
       await exportTxt(title: title, content: txt);
       return;
     }
     if (format == ExportFormat.csv) {
       String _escape(String s) => '"' + s.replaceAll('"', '""') + '"';
-      String csv = "${_escape('إجمالي الحصة')},${_escape('إجمالي السحوبات')},${_escape('الرصيد الحالي')}\n";
-      csv += "${_escape(totalShare.toString())},${_escape(withdrawals.toString())},${_escape(balance.toString())}\n";
+      String csv = "${_escape('الرصيد الافتتاحي')},${_escape('إجمالي الإيداعات')},${_escape('إجمالي السحوبات')},${_escape('الرصيد الحالي')}\n";
+      csv += "${_escape(openingBalance.toString())},${_escape(totalDeposits.toString())},${_escape(totalWithdrawals.toString())},${_escape(currentBalance.toString())}\n";
       await exportCsv(title: title, csvContent: csv);
       return;
     }
     final font = await _getArabicFont();
     final boldFont = await _getArabicBoldFont();
     final content = [
-      pw.Text('إجمالي الحصة: $totalShare', style: pw.TextStyle(font: font, fontSize: 14), textDirection: pw.TextDirection.rtl),
-      pw.Text('إجمالي السحوبات: $withdrawals', style: pw.TextStyle(font: font, fontSize: 14), textDirection: pw.TextDirection.rtl),
+      pw.Text('الرصيد الافتتاحي: $openingBalance', style: pw.TextStyle(font: font, fontSize: 14), textDirection: pw.TextDirection.rtl),
+      pw.Text('إجمالي الإيداعات اليدوية: $totalDeposits', style: pw.TextStyle(font: font, fontSize: 14), textDirection: pw.TextDirection.rtl),
+      pw.Text('إجمالي السحوبات اليدوية: $totalWithdrawals', style: pw.TextStyle(font: font, fontSize: 14), textDirection: pw.TextDirection.rtl),
       pw.Divider(),
-      pw.Text('الرصيد الحالي: $balance', style: pw.TextStyle(font: boldFont, fontSize: 16), textDirection: pw.TextDirection.rtl),
+      pw.Text('الرصيد الحالي: $currentBalance', style: pw.TextStyle(font: boldFont, fontSize: 16), textDirection: pw.TextDirection.rtl),
     ];
     await printOrExportPdf(title: title, dateInfo: dateInfo, content: content, isDirectPrint: format == ExportFormat.print);
   }
 
-  Future<void> exportStatisticsReport(String dateInfo, double wIncome, double wNet, double mIncome, double mNet, ExportFormat format) async {
-    final title = 'تقرير الإحصائيات';
+  Future<void> exportStatisticsReport({
+    required String periodTitle,
+    required double totalIncome,
+    required int haircutsCount,
+    required double totalExpenses,
+    required double netIncome,
+    required double ownerShare,
+    required double workerShare,
+    required double ownerExpenses,
+    required double finalOwnerDue,
+    required ExportFormat format,
+  }) async {
+    final title = 'تقرير إحصائيات العمل ($periodTitle)';
     if (format == ExportFormat.txt) {
-      String txt = "--- $title ---\nتاريخ: $dateInfo\n\nدخل أسبوعي: $wIncome\nصافي أسبوعي: $wNet\nدخل شهري: $mIncome\nصافي شهري: $mNet\n";
-      await exportTxt(title: title, content: txt);
+      String txt = "--- $title ---\nالفترة: $periodTitle\n\n"
+          "إجمالي الدخل: $totalIncome\n"
+          "عدد الحلاقات: $haircutsCount\n"
+          "الصرفة (المصروفات): $totalExpenses\n"
+          "صافي الدخل: $netIncome\n"
+          "حصة صاحب المحل: $ownerShare\n"
+          "حصة العامل: $workerShare\n"
+          "مخروجات صاحب المحل: $ownerExpenses\n"
+          "المبلغ المستحق لصاحب المحل: $finalOwnerDue\n";
+      await exportTxt(title: 'تقرير الإحصائيات', content: txt);
       return;
     }
     if (format == ExportFormat.csv) {
       String _escape(String s) => '"' + s.replaceAll('"', '""') + '"';
-      String csv = "${_escape('دخل أسبوعي')},${_escape('صافي أسبوعي')},${_escape('دخل شهري')},${_escape('صافي شهري')}\n";
-      csv += "${_escape(wIncome.toString())},${_escape(wNet.toString())},${_escape(mIncome.toString())},${_escape(mNet.toString())}\n";
-      await exportCsv(title: title, csvContent: csv);
+      String csv = "${_escape('الفترة')},${_escape('إجمالي الدخل')},${_escape('عدد الحلاقات')},${_escape('الصرفة')},${_escape('صافي الدخل')},${_escape('حصة صاحب المحل')},${_escape('حصة العامل')},${_escape('مخروجات صاحب المحل')},${_escape('مستحق صاحب المحل')}\n";
+      csv += "${_escape(periodTitle)},${_escape(totalIncome.toString())},${_escape(haircutsCount.toString())},${_escape(totalExpenses.toString())},${_escape(netIncome.toString())},${_escape(ownerShare.toString())},${_escape(workerShare.toString())},${_escape(ownerExpenses.toString())},${_escape(finalOwnerDue.toString())}\n";
+      await exportCsv(title: 'تقرير الإحصائيات', csvContent: csv);
       return;
     }
     final font = await _getArabicFont();
+    final boldFont = await _getArabicBoldFont();
     final content = [
-      pw.Text('دخل أسبوعي: $wIncome', style: pw.TextStyle(font: font, fontSize: 14), textDirection: pw.TextDirection.rtl),
-      pw.Text('صافي أسبوعي: $wNet', style: pw.TextStyle(font: font, fontSize: 14), textDirection: pw.TextDirection.rtl),
-      pw.Text('دخل شهري: $mIncome', style: pw.TextStyle(font: font, fontSize: 14), textDirection: pw.TextDirection.rtl),
-      pw.Text('صافي شهري: $mNet', style: pw.TextStyle(font: font, fontSize: 14), textDirection: pw.TextDirection.rtl),
+      pw.Text('الفترة المحددة: $periodTitle', style: pw.TextStyle(font: boldFont, fontSize: 14), textDirection: pw.TextDirection.rtl),
+      pw.SizedBox(height: 8),
+      pw.Text('إجمالي الدخل: $totalIncome', style: pw.TextStyle(font: font, fontSize: 13), textDirection: pw.TextDirection.rtl),
+      pw.Text('عدد الحلاقات: $haircutsCount', style: pw.TextStyle(font: font, fontSize: 13), textDirection: pw.TextDirection.rtl),
+      pw.Text('الصرفة (المصروفات): $totalExpenses', style: pw.TextStyle(font: font, fontSize: 13), textDirection: pw.TextDirection.rtl),
+      pw.Divider(),
+      pw.Text('صافي الدخل: $netIncome', style: pw.TextStyle(font: boldFont, fontSize: 15), textDirection: pw.TextDirection.rtl),
+      pw.SizedBox(height: 6),
+      pw.Text('حصة صاحب المحل: $ownerShare', style: pw.TextStyle(font: font, fontSize: 13), textDirection: pw.TextDirection.rtl),
+      pw.Text('حصة العامل: $workerShare', style: pw.TextStyle(font: font, fontSize: 13), textDirection: pw.TextDirection.rtl),
+      pw.Text('مخروجات صاحب المحل: $ownerExpenses', style: pw.TextStyle(font: font, fontSize: 13), textDirection: pw.TextDirection.rtl),
+      pw.Text('المبلغ المستحق لصاحب المحل: $finalOwnerDue', style: pw.TextStyle(font: boldFont, fontSize: 14), textDirection: pw.TextDirection.rtl),
     ];
-    await printOrExportPdf(title: title, dateInfo: dateInfo, content: content, isDirectPrint: format == ExportFormat.print);
+    await printOrExportPdf(title: 'تقرير الإحصائيات', dateInfo: periodTitle, content: content, isDirectPrint: format == ExportFormat.print);
   }
 }

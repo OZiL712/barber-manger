@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../core/models/haircut.dart';
 import '../core/models/barber_service.dart';
 import '../core/repositories/haircut_repository.dart';
@@ -21,6 +21,25 @@ class HaircutProvider with ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  String _selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  String get selectedDate => _selectedDate;
+
+  bool _isAllDates = false;
+  bool get isAllDates => _isAllDates;
+
+  String _searchQuery = '';
+  String get searchQuery => _searchQuery;
+
+  bool get isToday => _selectedDate == DateFormat('yyyy-MM-dd').format(DateTime.now());
+  bool get isYesterday {
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    return _selectedDate == DateFormat('yyyy-MM-dd').format(yesterday);
+  }
+
+  double get totalIncomeForSelectedDate {
+    return _haircuts.fold(0.0, (sum, item) => sum + item.amountReceived);
+  }
+
   HaircutProvider() {
     loadInitialData();
   }
@@ -32,7 +51,7 @@ class HaircutProvider with ChangeNotifier {
 
     try {
       _services = await _serviceRepo.getAllServices();
-      _haircuts = await _haircutRepo.getAllHaircuts();
+      await _fetchHaircuts();
     } catch (e) {
       _errorMessage = "حدث خطأ أثناء تحميل البيانات: $e";
     }
@@ -41,10 +60,92 @@ class HaircutProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _fetchHaircuts() async {
+    List<Haircut> list;
+    if (_isAllDates) {
+      list = await _haircutRepo.getAllHaircuts();
+    } else {
+      list = await _haircutRepo.getHaircutsByDateRange(_selectedDate, _selectedDate);
+    }
+
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      list = list.where((h) =>
+        h.operationNumber.toLowerCase().contains(q) ||
+        (h.notes?.toLowerCase().contains(q) ?? false)
+      ).toList();
+    }
+
+    _haircuts = list;
+  }
+
+  Future<void> refreshHaircuts() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      await _fetchHaircuts();
+    } catch (e) {
+      _errorMessage = "حدث خطأ أثناء تحديث البيانات: $e";
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  void changeDate(String newDate) {
+    _selectedDate = newDate;
+    _isAllDates = false;
+    refreshHaircuts();
+  }
+
+  void selectToday() {
+    _selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    _isAllDates = false;
+    refreshHaircuts();
+  }
+
+  void selectYesterday() {
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    _selectedDate = DateFormat('yyyy-MM-dd').format(yesterday);
+    _isAllDates = false;
+    refreshHaircuts();
+  }
+
+  void selectPreviousDay() {
+    final current = DateTime.tryParse(_selectedDate) ?? DateTime.now();
+    final prev = current.subtract(const Duration(days: 1));
+    _selectedDate = DateFormat('yyyy-MM-dd').format(prev);
+    _isAllDates = false;
+    refreshHaircuts();
+  }
+
+  void selectNextDay() {
+    final current = DateTime.tryParse(_selectedDate) ?? DateTime.now();
+    final next = current.add(const Duration(days: 1));
+    _selectedDate = DateFormat('yyyy-MM-dd').format(next);
+    _isAllDates = false;
+    refreshHaircuts();
+  }
+
+  void showAllDates() {
+    _isAllDates = true;
+    refreshHaircuts();
+  }
+
+  void searchHaircuts(String query) {
+    _searchQuery = query;
+    refreshHaircuts();
+  }
+
   Future<void> addHaircut(Haircut haircut) async {
     try {
       await _haircutRepo.addHaircut(haircut);
-      await loadInitialData(); // Refresh the list
+      // If added for a different date, we can switch to that date or stay on current
+      if (!_isAllDates && haircut.date != _selectedDate) {
+        _selectedDate = haircut.date;
+      }
+      await refreshHaircuts();
     } catch (e) {
       _errorMessage = "حدث خطأ أثناء الإضافة: $e";
       notifyListeners();
@@ -55,7 +156,7 @@ class HaircutProvider with ChangeNotifier {
   Future<void> updateHaircut(Haircut haircut) async {
     try {
       await _haircutRepo.updateHaircut(haircut);
-      await loadInitialData();
+      await refreshHaircuts();
     } catch (e) {
       _errorMessage = "حدث خطأ أثناء التعديل: $e";
       notifyListeners();
@@ -66,28 +167,12 @@ class HaircutProvider with ChangeNotifier {
   Future<void> deleteHaircut(int id) async {
     try {
       await _haircutRepo.deleteHaircut(id);
-      await loadInitialData();
+      await refreshHaircuts();
     } catch (e) {
       _errorMessage = "حدث خطأ أثناء الحذف: $e";
       notifyListeners();
       rethrow;
     }
-  }
-
-  void searchHaircuts(String query) async {
-    if (query.isEmpty) {
-      await loadInitialData();
-      return;
-    }
-    
-    // In-memory filter for simplicity, could also query DB
-    final allHaircuts = await _haircutRepo.getAllHaircuts();
-    _haircuts = allHaircuts.where((h) => 
-      h.operationNumber.contains(query) || 
-      (h.notes?.contains(query) ?? false)
-    ).toList();
-    
-    notifyListeners();
   }
 
   Future<void> filterByDateRange(String startDate, String endDate) async {

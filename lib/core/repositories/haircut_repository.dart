@@ -38,7 +38,7 @@ class HaircutRepository {
 
   Future<List<Haircut>> getAllHaircuts() async {
     final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> haircutMaps = await db.query('haircuts', orderBy: 'date DESC, time DESC');
+    final List<Map<String, dynamic>> haircutMaps = await db.query('haircuts', orderBy: 'date DESC, id DESC');
 
     List<Haircut> haircuts = [];
     for (var map in haircutMaps) {
@@ -99,7 +99,7 @@ class HaircutRepository {
       'haircuts',
       where: 'date >= ? AND date <= ?',
       whereArgs: [startDate, endDate],
-      orderBy: 'date DESC, time DESC',
+      orderBy: 'date DESC, id DESC',
     );
 
     List<Haircut> haircuts = [];

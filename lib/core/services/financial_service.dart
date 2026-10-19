@@ -59,4 +59,9 @@ class FinancialService {
   double calculateTotalOwnerPayments(List<OwnerPayment> payments) {
     return payments.fold(0.0, (sum, payment) => sum + payment.amount);
   }
+
+  // Calculates Independent My Account Balance (Opening Balance + Deposits - Withdrawals)
+  double calculateManualAccountBalance(double openingBalance, double totalDeposits, double totalWithdrawals) {
+    return openingBalance + totalDeposits - totalWithdrawals;
+  }
 }

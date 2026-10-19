@@ -36,13 +36,22 @@ class DailyIncomeProvider with ChangeNotifier {
   double get netIncome => _netIncome;
   
   double get ownerShare => _ownerShare;
+  double get workerShare => _ownerShare; // Equal share (netIncome / 2)
   double get ownerDelivered => _ownerDelivered;
+  double get finalOwnerAmountDue => _ownerShare - _ownerDelivered;
   List<OwnerPayment> get ownerPayments => _ownerPayments;
   
-  int get customersCount => _dailyHaircuts.length; // Simplified: 1 haircut = 1 customer for now
+  int get haircutsCount => _dailyHaircuts.length;
+  int get customersCount => _dailyHaircuts.length;
 
   List<Haircut> get dailyHaircuts => _dailyHaircuts;
   List<DailyExpense> get dailyExpenses => _dailyExpenses;
+
+  bool get isToday => _selectedDate == DateFormat('yyyy-MM-dd').format(DateTime.now());
+  bool get isYesterday {
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    return _selectedDate == DateFormat('yyyy-MM-dd').format(yesterday);
+  }
 
   DailyIncomeProvider() {
     _financialService = FinancialService(_haircutRepo, _financialRepo);
@@ -51,6 +60,31 @@ class DailyIncomeProvider with ChangeNotifier {
 
   void changeDate(String newDate) {
     _selectedDate = newDate;
+    loadDailyData();
+  }
+
+  void selectToday() {
+    _selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    loadDailyData();
+  }
+
+  void selectYesterday() {
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    _selectedDate = DateFormat('yyyy-MM-dd').format(yesterday);
+    loadDailyData();
+  }
+
+  void selectPreviousDay() {
+    final current = DateTime.tryParse(_selectedDate) ?? DateTime.now();
+    final prev = current.subtract(const Duration(days: 1));
+    _selectedDate = DateFormat('yyyy-MM-dd').format(prev);
+    loadDailyData();
+  }
+
+  void selectNextDay() {
+    final current = DateTime.tryParse(_selectedDate) ?? DateTime.now();
+    final next = current.add(const Duration(days: 1));
+    _selectedDate = DateFormat('yyyy-MM-dd').format(next);
     loadDailyData();
   }
 
@@ -109,6 +143,11 @@ class DailyIncomeProvider with ChangeNotifier {
       updatedAt: now.toIso8601String(),
     );
     await _financialRepo.addOwnerPayment(payment);
+    await loadDailyData();
+  }
+
+  Future<void> deleteOwnerPayment(int id) async {
+    await _financialRepo.deleteOwnerPayment(id);
     await loadDailyData();
   }
 }

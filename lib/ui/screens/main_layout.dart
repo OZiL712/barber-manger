@@ -6,19 +6,21 @@ import 'statistics/statistics_screen.dart';
 import 'settings/settings_screen.dart';
 
 class MainLayoutScreen extends StatefulWidget {
+  const MainLayoutScreen({super.key});
+
   @override
-  _MainLayoutScreenState createState() => _MainLayoutScreenState();
+  State<MainLayoutScreen> createState() => _MainLayoutScreenState();
 }
 
 class _MainLayoutScreenState extends State<MainLayoutScreen> {
   int _currentIndex = 0;
   
   final List<Widget> _screens = [
-    HaircutsScreen(),
-    DailyIncomeScreen(),
-    WorkerAccountScreen(),
-    StatisticsScreen(),
-    SettingsScreen(),
+    const HaircutsScreen(),
+    const DailyIncomeScreen(),
+    const WorkerAccountScreen(),
+    const StatisticsScreen(),
+    const SettingsScreen(),
   ];
 
   @override

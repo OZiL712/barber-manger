@@ -27,6 +27,7 @@ class BackupService {
       'haircuts',
       'haircut_services',
       'worker_withdrawals',
+      'worker_deposits',
       'owner_payments',
       'daily_expenses'
     ];
@@ -82,6 +83,7 @@ class BackupService {
           'haircuts',
           'haircut_services',
           'worker_withdrawals',
+          'worker_deposits',
           'owner_payments',
           'daily_expenses'
         ];
@@ -118,7 +120,7 @@ class BackupService {
 
     final tables = [
       'app_settings', 'barber_services', 'haircuts', 'haircut_services',
-      'worker_withdrawals', 'owner_payments', 'daily_expenses'
+      'worker_withdrawals', 'worker_deposits', 'owner_payments', 'daily_expenses'
     ];
 
     for (String table in tables) {

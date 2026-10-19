@@ -14,7 +14,7 @@ void main() {
 }
 
 class BarberApp extends StatelessWidget {
-  const BarberApp({Key? key}) : super(key: key);
+  const BarberApp({super.key});
 
   @override
   Widget build(BuildContext context) {
